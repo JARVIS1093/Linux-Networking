@@ -1,0 +1,6 @@
+Write different playbooks to do the following task.
+1. An Ansible playbook to a) Create a l2 network and name it unityid-netl2 b) create two VMs and
+connect this to L2 network
+2. Ansible playbook to collect logs (CPU load averages) from both host and the two guest created in part1
+at 1 minute granularity. The collected log should be stored in the file /var/customlogs/logs folder. Log
+file should be in CSV format with following entry: hostname, cpu1min, cpu5 min, cpu 15min
