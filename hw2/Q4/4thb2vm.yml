@@ -1,0 +1,14 @@
+- hosts: localhost
+  connection: local
+  become: yes
+  become_user: root
+  tasks:
+  - name: Create 1st VM
+    command: sudo virt-install -n VMnew1 -r 2048 --vcpu=4  --disk path=/var/lib/libvirt/images/VMnew1.img,size=10 --network network=bhavya -c /home/ece792/CentOS-7-x86_64-Minimal-1804.iso  -v
+  - name: create 2nd VM
+    command: sudo virt-install -n VMnew2 -r 2048 --vcpu=4  --disk path=/var/lib/libvirt/images/VMnew2.img,size=10 --network network=bhavya -c /home/ece792/CentOS-7-x86_64-Minimal-1804.iso  -v
+
+
+
+
+

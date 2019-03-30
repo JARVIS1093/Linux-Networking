@@ -1,0 +1,10 @@
+Please refer Q5-1.py for question 5.1 and 5.2 
+Pleae refer cr1.py for Q5.3(a) and Q5.3(b)
+  The user is asked for no of iteration in order to calculate the moving average 
+  the user is asked for entering either cpu/mem
+  the output is the list of VMs sorted by Cpu/memory as per the input given
+  the cpu usage usage is taken as cpu_time in the program which is one of the values returned by the python libvirt api function getCPUStats
+  the memory usage is taken as rss value as this defines the memory being used by the VM , although we are printing all the values returned  by the function memoryStats in the libvirt python api 
+  File "aler.csv " (alert saved in this file) would be created in the python folder on your machine. For simplicity, please keep the file cr1py on the home folder 
+  
+Bonus: 

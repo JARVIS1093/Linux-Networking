@@ -1,0 +1,11 @@
+Install : pip install docker 
+create new_image using Dockerfile attached
+
+ 
+make sure all the files are in the same folder
+Edit the user input in connmat.txt file
+auto.py would create the leaf spine topology
+Please give the input as <conatiner 1 name> <conatiner 2 name> <network type>
+acceptabe network types are : bridge,L3,gre,vxlan
+all the subnets used are in 30.0.0.0-49.0.0.0 range. Please make sure that you dont have any running bridge in the same range
+run connectivity.yml file

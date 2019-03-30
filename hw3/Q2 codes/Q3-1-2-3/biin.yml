@@ -1,0 +1,14 @@
+---
+created:
+    - source: client.img
+      desti: Q2-1.img
+      destx: Q2-1.xml
+      name: Q2-1
+      mem: 4194304
+      vcpu: 4
+    - source: client.img
+      desti: Q2-2.img
+      destx: Q2-2.xml
+      name: Q2-2
+      mem: 4194304
+      vcpu: 4

@@ -1,0 +1,86 @@
+- name: create  VMs
+  hosts: localhost
+  become: yes
+  vars_files:
+    - yamal.yml
+
+  tasks:
+
+
+    - name: VMList
+      virt:
+        command: "list_vms"
+      register: vms
+    - name: copy image file
+      copy:
+        src: /var/lib/libvirt/images/client.img
+        dest: "/var/lib/libvirt/images/{{item.name}}.img"
+      with_items: "{{created}}"
+    - name: copy the xml file
+      copy: 
+        src: /etc/libvirt/qemu/client.xml
+        dest: "/etc/libvirt/qemu/{{item.name}}.xml"
+      with_items: "{{created}}"
+    - name: change name
+      xml:
+        path: "/etc/libvirt/qemu/{{item.name}}.xml"
+        xpath: /domain/name
+        value: "{{item.name}}"
+      with_items: "{{created}}"
+    - name: remove uuid
+      xml: 
+        path: "/etc/libvirt/qemu/{{item.name}}.xml"
+        xpath: /domain/uuid
+        state: absent
+      with_items: "{{created}}"
+    - name: cahnge disk soucre
+      xml:
+        path: "/etc/libvirt/qemu/{{item.name}}.xml"
+        xpath: /domain/devices/disk/source
+        attribute: file
+        value: "/var/lib/libvirt/images/{{item.name}}.img"
+      with_items: "{{created}}"
+    - name: delete interface
+      xml: 
+        path: "/etc/libvirt/qemu/{{item.name}}.xml"
+        xpath: /domain/devices/interface
+        state: absent
+      with_items: "{{created}}"
+    - name: add int-1 details
+      xml:
+        path: "/etc/libvirt/qemu/{{item.0.name}}.xml"
+        xpath: /domain/devices
+        add_children:
+              - interface:
+                  type: network
+                  _:
+                    - source:
+                        network: "{{item.1.net}}"
+                    - model: 
+                        type: virtio
+                    - address:
+                        type: pci
+                        domain: "0x0000"
+                        bus: "0x00"
+                        slot: "{{item.1.slot}}"
+                        function: "0x0"
+                    - virtualport:
+                        type: openvswitch
+           
+                   
+      with_subelements: 
+         - "{{created}}"
+         - network
+    - name: define VM
+      virt:
+        command: define
+        name: "{{item.name}}"
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/{{item.name}}.xml") }}'
+      with_items: "{{created}}"   
+    - name: starting the VM
+      virt: 
+        name: "{{item.name}}"
+        state: running
+      with_items: "{{created}}"
+      
+

@@ -1,0 +1,373 @@
+- hosts: localhost
+  connection: local
+  become: yes
+  become_user: root
+  tasks:
+    - name: Create OVS
+      openvswitch_bridge:
+        bridge: "{{ item.bridge}}"  
+        state: present
+      loop: 
+        - { bridge: 'internet' }
+        - { bridge: 'L3' }
+        - { bridge: 'L2' }
+        - { bridge: 'other' }
+    - name: copying the network
+      copy:
+        src: "/etc/libvirt/qemu/networks/{{item.spath}}"
+        dest: "/etc/libvirt/qemu/networks/{{item.path}}"
+      loop:
+         - { spath: 'ovsnat.xml' , path: 'internet.xml' }
+         - { spath: 'ovsnat.xml' , path: 'L3.xml' }
+         - { spath: 'ovsnat.xml' , path: 'L2.xml' }
+         - { spath: 'ovsnat.xml' , path: 'other.xml' }
+    - name: change name
+      xml:
+        path: "/etc/libvirt/qemu/networks/{{item.path}}"
+        xpath: /network/name
+        value: "{{item.name}}"
+      loop:
+         - { name: 'internet' , path: 'internet.xml' }
+         - { name: 'L3' , path: 'L3.xml' }
+         - { name: 'L2' , path: 'L2.xml'}     
+         - { name: 'other' , path: 'other.xml' }
+    - name : Remove UUID
+      xml:
+        path: "/etc/libvirt/qemu/networks/{{item.path}}"
+        xpath: /network/uuid
+        state: absent
+      loop:
+         - {  path: 'internet.xml' }
+         - {  path: 'L3.xml' }      
+         - {  path: 'L2.xml' } 
+         - {  path: 'other.xml' }
+    - name : Rename Bridge in Network File
+      xml:
+        path: "/etc/libvirt/qemu/networks/{{item.path}}"
+        xpath: /network/bridge
+        attribute: name     
+        value: "{{item.name}}"
+      loop:
+         - { name: 'internet' , path: 'internet.xml' }
+         - { name: 'L3' , path: 'L3.xml' }
+         - { name: 'L2' , path: 'L2.xml' }
+         - { name: 'other' , path: 'other.xml' }
+    - name: remove mac address
+      xml: 
+        path: "/etc/libvirt/qemu/networks/{{item.path}}"
+        xpath: /network/mac
+        state: absent
+      loop:
+         - { path: 'internet.xml' }
+         - { path: 'L3.xml' }
+         - { path: 'L2.xml' }
+         - { path: 'other.xml' }
+    - name: Adding virtual port
+      xml:
+        path: "/etc/libvirt/qemu/networks/{{item.path}}"
+        xpath: /network
+        add_children:
+           - virtualport:
+                type: openvswitch
+      loop:
+         - { path: 'internet.xml' }
+         - { path: 'L3.xml' }
+         - { path: 'L2.xml' }
+         - { path: 'other.xml' }
+    
+    - name : Define a network
+      virt_net:
+        command: define
+        name: "{{item.name}}"
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/networks/{{item.path}}") }}'
+      loop:
+        - { name: 'internet' , path: 'internet.xml'}
+        - { name: 'L3' , path: 'L3.xml' }
+        - { name: 'L2' , path: 'L2.xml' }
+        - { name: 'other' , path: 'other.xml' }
+    - name: Start a network
+      virt_net:
+        command: start
+        name: "{{item.name}}"
+      loop:
+        - { name: 'internet' }
+        - { name: 'L3' }
+        - { name: 'L2' }
+        - { name: 'other' }
+        
+
+    - name : Making the bridge interface up
+      command: "ifconfig {{item.int}} up"
+      loop:
+        - { int: 'L2' }
+        - { int: 'L3' }
+        - { int: 'internet' }
+        - { int: 'other' }
+    - name: Changing the internet dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "interface=internet"
+    - name: Changing the internet dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "interface=other"
+    - name: Changing the internet dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "interface=L3"
+    - name: Changing the internet dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "dhcp-range=internet,192.168.5.2,192.168.5.254"
+    - name: Changing the L2 dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "dhcp-range=L3,192.168.6.2,192.168.6.254"
+    - name: Changing the L3 dnsmasq.conf file
+      lineinfile:
+         path: /etc/dnsmasq.conf
+         insertafter: EOF
+         line: "dhcp-range=other,192.168.7.2,192.168.7.254"     
+    - name: System restart
+      command: systemctl restart dnsmasq
+  
+    - name: Give INPUT udp config in iptables for 53 
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         protocol: "{{item.protocol}}"
+         match : "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'INPUT' , interface: 'internet' , protocol: 'udp' , dport: '53' , action: 'ACCEPT'}
+
+    - name: Give INPUT tcp  config in iptables for 53 
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         protocol: "{{item.protocol}}"
+         match : "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'INPUT' , interface: 'internet' , protocol: 'tcp' , dport: '53' , action: 'ACCEPT'}
+    - name: Give INPUT udp  config in iptables for 67 
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         protocol: "{{item.protocol}}"
+         match : "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'INPUT' , interface: 'internet' , protocol: 'udp' , dport: '67' , action: 'ACCEPT'}
+     
+    - name: Give INPUT tcp  config in iptables for 67 
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         protocol: "{{item.protocol}}"
+         match : "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'INPUT' , interface: 'internet' , protocol: 'tcp' , dport: '67' , action: 'ACCEPT'}
+
+    - name: Give FORWARD config in out-interface iptables
+      iptables:
+         chain: "{{item.chainname}}"
+         destination: "{{item.destip}}"
+         out_interface: "{{item.interface}}"
+         match : "{{item.conn}}"
+         ctstate: "{{item.state}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'FORWARD' , destip: '192.168.5.0/24' , interface: ' internet' , conn: 'conntrack' , state: 'RELATED,ESTABLISHED' , action: 'ACCEPT'}
+   
+    - name: Give FORWARD config in in-interface iptables
+      iptables:
+         chain: "{{item.chainname}}"
+         source: "{{item.sip}}"
+         in_interface: "{{item.interface}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'FORWARD' , sip: '192.168.5.0/24' , interface: ' internet' , action: 'ACCEPT' } 
+
+    - name: Give FORWARD config in i-o iptables
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         out_interface: "{{item.interface}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'FORWARD'  , interface: 'internet' , action: 'ACCEPT' }
+    - name: Give FORWARD config o with message iptables
+      iptables:
+         chain: "{{item.chainname}}"
+         out_interface: "{{item.interface}}"
+         jump: "{{item.action}}"
+         reject_with: icmp-port-unreachable
+      loop:
+         - { chainname: 'FORWARD'  , interface: ' internet'  ,  action: 'REJECT' }
+    - name: Give FORWARD config i with message iptables
+      iptables:
+         chain: "{{item.chainname}}"
+         in_interface: "{{item.interface}}"
+         jump: "{{item.action}}"
+         reject_with: icmp-port-unreachable
+      loop:
+         - { chainname: 'FORWARD'  , interface: ' internet'  ,  action: 'REJECT' }
+  
+    - name: Last rule
+      iptables:
+         chain: "{{item.chainname}}"
+         out_interface: "{{item.interface}}"
+         protocol: "{{item.protocol}}"
+         match: "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: "{{item.action}}"
+      loop:
+         - { chainname: 'FORWARD'  , interface: ' internet'  , protocol: 'udp' , dport: '68' ,  action: 'REJECT' }
+
+    - name: Masquerade rules
+      iptables:
+         table: nat
+         chain: POSTROUTING
+         source: "{{item.sip}}"
+         destination: base-address.mcast.net/24
+         jump: RETURN
+      loop:
+         - { sip: '192.168.5.0/24' }
+
+  
+    - name: Masq 2nd rule
+      iptables:
+         table: nat
+         chain: POSTROUTING
+         source: "{{item.sip}}"
+         destination: "{{item.dip}}"
+         jump: RETURN
+      loop:
+         - { sip: '192.168.5.0/24' , dip: '255.255.255.255/32' }
+    - name: Masq 3rd rule
+      iptables:
+         table: nat
+         chain: POSTROUTING
+         source: "{{item.sip}}"
+         destination: "{{item.dip}}"
+         protocol: tcp
+         jump: MASQUERADE
+         to_ports: 1024-65535
+      loop:
+         - { sip: '192.168.5.0/24' , dip: '! 192.168.5.0/24' }
+    - name: MASq 4th rule 
+      iptables:
+         table: nat
+         chain: POSTROUTING
+         source: "{{item.sip}}"
+         destination: "{{item.dip}}"
+         protocol: udp
+         jump: MASQUERADE
+         to_ports: 1024-65535
+      loop:
+         - { sip: '192.168.5.0/24' , dip: '! 192.168.5.0/24' }
+    - name: MASq 5th rule
+      iptables: 
+         table: nat 
+         chain: POSTROUTING
+         source: "{{item.sip}}"
+         destination: "{{item.dip}}"
+         jump: MASQUERADE
+      loop:
+         - { sip: '192.168.5.0/24' , dip: '! 192.68.5.0/24' }
+    - name: Giving IP address to ovsnat   
+      command: "sudo ifconfig {{item.interface}} {{item.ip}} netmask 255.255.255.0 up"
+      loop:
+         - { interface: 'internet' , ip: '192.168.5.1' }
+         - { interface: 'L3' , ip : '192.168.6.1' }
+         - { interface: 'other' , ip: '192.168.7.1' }
+            
+    - name: Router-Rule-1
+      iptables:
+         chain: INPUT
+         in_interface: "{{item.name}}"
+         protocol: "{{item.protocol}}"
+         match: "{{item.protocol}}"
+         destination_port: "{{item.dport}}"
+         jump: ACCEPT
+      loop:
+         - { name: 'L3' ,  protocol: 'udp' , dport: '53' }
+         - { name: 'L3' ,  protocol: 'tcp' , dport: '53' }
+         - { name: 'L3' ,  protocol: 'udp' , dport: '67' }
+         - { name: 'L3' ,  protocol: 'tcp' , dport: '67' }
+         - { name: 'other' ,  protocol: 'udp' , dport: '53' }
+         - { name: 'other' ,  protocol: 'tcp' , dport: '53' }
+         - { name: 'other' ,  protocol: 'udp' , dport: '67' }
+         - { name: 'other' ,  protocol: 'tcp' , dport: '67' }
+    - name: Router-rule-5
+      iptables: 
+         chain: FORWARD
+         destination: "{{item.dip}}"
+         out_interface: "{{item.name}}"
+         jump: ACCEPT
+      loop:
+         - { name: 'L3' , dip: '192.168.6.0/24' }
+         - { name: 'other' , dip: '192.168.7.0/24' }
+    - name: Router-rule-6
+      iptables:
+        chain: FORWARD
+        source: "{{item.sip}}"
+        in_interface: "{{item.name}}"
+        jump: ACCEPT
+      loop:
+        - { name: 'L3' , sip: '192.168.6.0/24' }
+        - { name: 'other' , sip: '192.168.7.0/24' }
+
+    - name: Router-rule-7
+      iptables:
+        chain: FORWARD
+        in_interface: "{{item.name}}"
+        out_interface: "{{item.name}}"
+        jump: ACCEPT
+      loop:
+        - { name: 'L3' }
+        - { name: 'other' } 
+    - name: Router-rul-8
+      iptables:
+        chain: FORWARD
+        out_interface: "{{item.name}}"
+        jump: REJECT
+        reject_with: icmp-port-unreachable
+      loop:
+        - { name: 'L3' }
+        - { name: 'other' }
+    - name: Router rule 9
+      iptables: 
+        chain: FORWARD
+        in_interface: "{{item.name}}"
+        jump: REJECT
+        reject_with: icmp-port-unreachable
+      loop:
+        - { name: 'L3' }
+        - { name: 'other' }
+    - name: Rule no 10
+      iptables:
+        chain: OUTPUT
+        out_interface: "{{item.name}}"
+        protocol: udp
+        match: udp
+        destination_port: 68
+        jump: ACCEPT
+      loop:
+        - { name: 'L3'}
+        - { name: 'other' }    
+      
+    
+    
+    

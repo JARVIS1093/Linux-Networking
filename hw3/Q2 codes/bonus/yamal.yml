@@ -1,0 +1,11 @@
+created:
+- name: 0
+  network:
+  - net: L3
+    slot: '0x10'
+- name: 1
+  network:
+  - net: L2
+    slot: '0x09'
+  - net: internet
+    slot: '0x03'

@@ -1,0 +1,130 @@
+- name: create  VMs
+  hosts: localhost
+  become: yes
+  vars_files:
+    - biin.yml
+
+  tasks:
+
+
+    - name: VMList
+      virt:
+        command: "list_vms"
+      register: vms
+    - name: copy image file
+      copy:
+        src: "/var/lib/libvirt/images/{{item.source}}"
+        dest: "/var/lib/libvirt/images/{{item.desti}}"
+      with_items: "{{created}}"
+    - name: copy the xml file
+      copy: 
+        src: /etc/libvirt/qemu/client.xml
+        dest: "/etc/libvirt/qemu/{{item.destx}}"
+      with_items: "{{created}}"
+    - name: change name
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/name
+        value: "{{item.name}}"
+      with_items: "{{created}}"
+    - name: remove uuid
+      xml: 
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/uuid
+        state: absent
+      with_items: "{{created}}"
+    - name: change memory
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/memory
+        value: "{{item.mem}}"
+      with_items: "{{created}}"
+    - name: change current mmory
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/currentMemory
+        value: "{{item.mem}}"
+      with_items: "{{created}}"
+    - name: change vcpu
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/cpu
+        value: "{{item.vcpu}}"
+      with_items: "{{created}}"
+    - name: cahnge disk soucre
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices/disk/source
+        value: "/var/lib/libvirt/images/{{item.desti}}"
+      with_items: "{{created}}"
+    - name: delete interface
+      xml: 
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices/interface
+        state: absent
+      with_items: "{{created}}"
+    - name: add interface-1
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices
+        add_children:
+            - interface:
+                 type: network
+      with_items: "{{created}}"
+    - name: add int-1 details
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices/interface
+        add_children:
+            - source:
+                 network: internet
+            - model: 
+                 type: virtio
+            - address:
+                 type: pci
+                 domain: "0x0000"
+                 bus: "0x00"
+                 slot: "0x03"
+                 function: "0x0"
+            - virtualport:
+                 type: openvswitch
+      with_items: "{{created}}"
+    - name: add iinterface-2
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices
+        add_children:
+            - interface:
+                 type: network
+      with_items: "{{created}}"
+    - name: add int-2 details
+      xml:
+        path: "/etc/libvirt/qemu/{{item.destx}}"
+        xpath: /domain/devices/interface
+        add_children:
+            - source:
+                 network: L2
+            - model:
+                 type: virtio
+            - address:
+                 type: pci
+                 domain: "0x0000"
+                 bus: "0x00"
+                 slot: "0x09"
+                 function: "0x0"
+            - virtualport:
+                 type: openvswitch
+      with_items: "{{created}}"
+    - name: define VM
+      virt:
+        command: define
+        name: "{{item.name}}"
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/{{item.destx}}") }}'
+      with_items: "{{created}}"   
+    - name: starting the VM
+      virt: 
+        name: "{{item.name}}"
+        state: running
+      with_items: "{{created}}"
+      
+

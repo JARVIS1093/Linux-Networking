@@ -1,0 +1,23 @@
+Q3-1,2,3:
+1. Please install dnsmasq before running the code
+2. Please copy file “ovsnat.xml” in etc/libvirt/qemu/networks
+3. Put the file ovsall.yml , biin.yml, h3q2.yml in the home folder and move the file client.xml to “/etc/libvirt/qemu” 
+4. Assumption: I have taken an image file with 12Gb disk which already has wireshark and iperf installed 
+5. Give the input in “biin file”. The current input is as per the diagram 
+6. the image file is available in my machine with name “client.img” at var/lib/libvirt/images
+7. Run ovsall.yml to create network first
+8. Input can be given to biin.yml
+9. Run h3q2.yml to create VM and to attach them to the topology mentioned 
+
+Bonus:
+
+1. Please keep all the files: hw3-3.py, yamal.yml, h3bonus1.yml,except client.xml in the home folder and move client.xml to “/etc/libvirt/qemu”
+2. Run the file ovsall.yml to create network first
+3. Run the hw3-3.py . Give the no of Vms in the first prompt on running the python script
+4. Give the topology separarted by space for every VM per line . Topology can be given as : internet,L2,L3,other as these are the bridges created on running ovsall.yml
+5. Vms would get created according to the topology .
+6. Make sure you have python 2.7.12 installed
+7. install pyYAML
+8. install ansible playbook latest version
+ASSUMPTION:: client.img is available in our machine at “/var/lib/libvirt/images”
+

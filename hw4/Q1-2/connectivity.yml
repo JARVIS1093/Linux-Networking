@@ -1,0 +1,32 @@
+- name: create  VMs
+  hosts: localhost
+  become: yes
+
+
+  tasks:
+    - name: run connect.py
+      shell: python connect1.py > abc.txt
+
+
+    - name: read the vars_file
+      include_vars:
+        file: "var_file.yml"
+        name: names
+
+
+
+
+    - name: copy image file
+      docker_container:
+         name: "{{ item }}"
+         image: new_image
+         detach: yes
+         interactive: yes
+         tty: yes
+         privileged: yes
+      with_items:
+         - "{{ names.container_names }}"
+
+    - name: run connectivity script
+      shell: python cpy5.py >> abc.txt
+

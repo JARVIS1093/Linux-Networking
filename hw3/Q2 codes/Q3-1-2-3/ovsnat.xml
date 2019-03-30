@@ -1,0 +1,13 @@
+
+<network>
+  <name>ovsnat</name>
+  <uuid>81810d13-0574-4b98-9c4f-d24e6d7198ba</uuid>
+  <forward mode='bridge'/>
+  <bridge name='ovsnat'/>
+  <virtualport type='openvswitch'/>
+</network>
+
+
+
+
+

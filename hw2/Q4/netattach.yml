@@ -1,0 +1,104 @@
+- hosts: localhost
+  connection: local
+  become: yes
+  become_user: root
+  tasks:
+
+#    - name: Create OVS
+ #     openvswitch_bridge:
+  #      bridge: sw3
+   #     state: present
+
+
+    - name: copying the network
+      copy:
+        src: /etc/libvirt/qemu/networks/newnet.xml
+        dest: /etc/libvirt/qemu/networks/bdwived-netl2.xml
+
+    - name: change name
+      xml:
+        path: /etc/libvirt/qemu/networks/bdwived-netl2.xml
+        xpath: /network/name
+        value: bdwived-netl2
+
+    - name : Remove UUID
+      xml:
+        path: /etc/libvirt/qemu/networks/bdwived-netl2.xml
+        xpath: /network/uuid
+        state: absent
+
+    - name : Rename Bridge in Network File
+      xml:
+        path: /etc/libvirt/qemu/networks/bdwived-netl2.xml
+        xpath: /network/bridge
+        attribute: name
+        value: sw2
+    - name: Adding virtual port
+      xml:
+        path: /etc/libvirt/qemu/networks/bdwived-netl2.xml
+        xpath: /network
+        add_children:
+          - virtualport:
+               type: openvswitch
+
+
+
+    - name : Define a network
+      virt_net:
+        command: define
+        name: bdwived-netl2
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/networks/bdwived-netl2.xml") }}'
+
+    - name: Start a network
+      virt_net:
+        command: start
+        name: bdwived-netl2
+
+    - name: Attach a network to VM
+      command: sudo virsh attach-interface --domain VMnew1 --type network --source bdwived-netl2 --model virtio --config --live
+
+    - name: Destroy VM
+      virt:
+        command: destroy
+        name:  VMnew1
+
+    - name: Define VM
+      virt:
+        command:  define
+        name: VMnew1
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/VMnew1.xml") }}'
+
+
+    - name: Start VM
+      virt:
+        command: start
+        name: VMnew1
+
+    - name: Attach a network to VM
+      command: sudo virsh attach-interface --domain VMnew2 --type network --source bdwived-netl2 --model virtio --config --live
+
+    - name: Destroy VM
+      virt:
+        command: destroy
+        name:  VMnew2
+
+    - name: Define VM
+      virt:
+        command:  define
+        name: VMnew2
+        xml: '{{ lookup("template", "/etc/libvirt/qemu/VMnew2.xml") }}'
+
+
+    - name: Start VM
+      virt:
+        command: start
+        name: VMnew2
+
+
+
+ #   - name: Create OVS
+  #    openvswitch_bridge:
+   #     bridge: sw3
+    #    state: present
+
+

@@ -1,0 +1,7 @@
+cs1,cs2,bridge
+cs3,cs4,vxlan
+cs5,cs6,gre
+cs7,cs8,bridge
+cs9,cs10,L3
+cs11,cs12,vxlan
+

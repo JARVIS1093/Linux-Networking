@@ -1,0 +1,9 @@
+for Q4. 1 : 
+1. first create 2 VMs using the file "4thb2vm.yml"
+2. we tried multiple ways to create VMs using xml changes but we were getting stuck as the xml file for the VM was being created and the network was being attached to it too but the interface attributes Domain and Slot and Bus were giving some error . hence we used command inside the ansible file
+3. we created an L2 network using "ansbhclone.yml" file 
+4. Attached the interface of VMs to the created network
+5. install lxml 
+6. Use latest version of ansible > 2.7
+
+
